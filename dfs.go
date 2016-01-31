@@ -33,6 +33,8 @@ type vertex struct {
 	neighbors []int
 	color     int
 	parent    int
+	start     int
+	finish    int
 }
 
 func (vertex *vertex) addNeighbor(name int) {
@@ -54,6 +56,10 @@ func (vertex vertex) String() string {
 	buffer.WriteString(getColor(vertex.color))
 	buffer.WriteString(" parent: ")
 	buffer.WriteString(strconv.Itoa(vertex.parent))
+	buffer.WriteString(" start: ")
+	buffer.WriteString(strconv.Itoa(vertex.start))
+	buffer.WriteString(" finish: ")
+	buffer.WriteString(strconv.Itoa(vertex.finish))
 	buffer.WriteString(" neighbors: {")
 	for i, v := range vertex.neighbors {
 		if i != 0 && i != len(vertex.neighbors) {
@@ -85,27 +91,49 @@ func (graph Graph) Less(i, j int) bool {
 func (graph *Graph) initializeGraph() {
 	for i := 0; i < len(graph.vertices); i++ {
 		graph.vertices[i].color = WHITE
+		graph.vertices[i].start = UNDEFINED
+		graph.vertices[i].finish = UNDEFINED
 		graph.vertices[i].parent = UNDEFINED
 	}
+}
+
+func (graph *Graph) vertexExists(name int) bool {
+	for _, vertex := range graph.vertices {
+		if vertex.name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func (graph *Graph) addVertex(name int) {
+	graph.vertices = append(graph.vertices, vertex{
+		name: name,
+	})
+
+	sort.Sort(*graph)
+}
+
+func (graph *Graph) findVertex(a int) *vertex {
+	for i, v := range graph.vertices {
+		if v.name == a {
+			return &graph.vertices[i]
+		}
+	}
+	fmt.Println("error in findVertex")
+	return &vertex{}
 }
 
 // AddEdge adds an edge to the graph
 func (graph *Graph) AddEdge(a int, b int) {
 	// first look if vertex exists
-	for i, vertex := range graph.vertices {
-		if vertex.name == a {
-			graph.vertices[i].addNeighbor(b)
-			return
-		}
+	if !graph.vertexExists(a) {
+		graph.addVertex(a)
 	}
-
-	// if we make it here, the vertex doesnt exist
-	graph.vertices = append(graph.vertices, vertex{
-		name:      a,
-		color:     WHITE,
-		neighbors: []int{b},
-	})
-	sort.Sort(*graph)
+	if !graph.vertexExists(b) {
+		graph.addVertex(b)
+	}
+	graph.findVertex(a).addNeighbor(b)
 }
 
 func (graph Graph) String() string {
@@ -130,12 +158,45 @@ func LoadGraph() *Graph {
 	return g
 }
 
+func (graph *Graph) dfs() {
+	time := 0
+	// run through all vertices on the graph
+	for i := 0; i < graph.Len(); i++ {
+		if graph.vertices[i].color == WHITE {
+			graph.visit(graph.vertices[i].name, &time)
+		}
+	}
+}
+
+func (graph *Graph) visit(vertex int, time *int) {
+	curVer := graph.findVertex(vertex)
+	curVer.color = GRAY
+	*time = *time + 1
+	curVer.start = *time
+
+	for i, v := range curVer.neighbors {
+		if graph.findVertex(v).color != WHITE {
+			continue
+		}
+		graph.findVertex(v).parent = vertex
+		graph.visit(curVer.neighbors[i], time)
+	}
+	curVer.color = BLACK
+	*time = *time + 1
+	curVer.finish = *time
+}
+
 func main() {
 	g := LoadGraph()
 	g.AddEdge(1, 3)
-	g.AddEdge(4, 3)
+	g.AddEdge(3, 4)
+	g.AddEdge(4, 5)
 	g.AddEdge(2, 3)
 	g.AddEdge(2, 1)
-	g.initializeGraph()
+	g.AddEdge(6, 7)
+	fmt.Println("\nBefore DFS")
+	g.PrintGraph()
+	fmt.Println("\nAfter DFS")
+	g.dfs()
 	g.PrintGraph()
 }
